@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from pydantic import BaseModel
+import uvicorn
 import hashlib
 import unidecode
 from mimetypes import guess_type as guess_mimetype
@@ -8,25 +9,31 @@ from PIL import Image as PILImage
 from os import urandom
 from os import makedirs, remove as os_remove
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 import pypandoc
 import pytesseract
 import sqlalchemy
 import sqlalchemy.orm
-import psycopg2
+#import psycopg2
 from sqlalchemy import text
 from shutil import copyfileobj
 from yake import yake
 from stopwords import stopwords
 from datetime import date
+import re
 server = FastAPI()
 
 # Set up database connection
 
-SQLALCHEMY_DATABASE_URL = "postgresql://isrxnzde:AE-sx6wF20aLCUEjkAJt31z9P0J2bTie@tiny.db.elephantsql.com/isrxnzde"
+SQLALCHEMY_DATABASE_URL = "postgresql://mvlzxjih:hQSOo8VpoyzsfQAEm67BNdQOievQYTKr@satao.db.elephantsql.com/mvlzxjih"
 engine = sqlalchemy.create_engine(SQLALCHEMY_DATABASE_URL)
 Session = sqlalchemy.orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Language map
+LANG: dict[str, str] = {
+    'vie': 'Vietnamese',
+    'eng': 'English'
+}
 
 class LoginForm(BaseModel):
     email: str
@@ -40,6 +47,7 @@ class TextUploadForm(LoginForm):
 
 class TextQuery(LoginForm):
     name: str
+    lang: Optional[str]
 
 class OcrImage(LoginForm):
     pass
@@ -51,7 +59,7 @@ def hash_pw(pw: str) -> Tuple[bytes, bytes]:
     return salt, h
 
 # set up pytesseract by providing path to tesseract executable
-pytesseract.pytesseract.tesseract_cmd = './Tesseract-OCR/tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = './tesseract'
 
 @server.post("/signup/")
 async def signup(form: LoginForm):
@@ -75,7 +83,7 @@ async def signup(form: LoginForm):
 def check_credentials(email, pw):
     with Session() as conn:
         _credentials = conn.execute(text(f"SELECT id, pw, salt FROM credentials WHERE id = '{email}'")).fetchall()
-        print(_credentials[0][2])
+        #print(_credentials[0][2])
         if _credentials:
             _hashed_pw_input = hashlib.pbkdf2_hmac("sha256", pw.encode(), bytearray.fromhex(_credentials[0][2]), 1000)
 
@@ -101,25 +109,27 @@ async def ocr(lang: str, fi: UploadFile = File(...)):
     if not _c:
         raise HTTPException(status_code=400, detail= "Invalid credentials")
     else:
-        _fn = unidecode.unidecode(fi.filename)
-        _ft = guess_mimetype(fi.filename, False)[0]
+        _fn = f"tmp/{unidecode.unidecode(fi.filename)}"
+        _ft = str(guess_mimetype(_fn, False)[0])
+
         with open(_fn, 'wb') as w:
             copyfileobj(fi.file, w)
         if (not _ft.startswith('image/')):
             try:
-                _c = pypandoc.convert_file(_fn, "plain", verify_format=False).replace('\r\n\r\n', '\n').replace('\r\n', ' ')
+                _c = pypandoc.convert_file(_fn, "plain", verify_format=False, extra_args=['--wrap=none']).replace('\r\n\r\n', '\n').replace('\r\n', ' ').removeprefix('\n')
             except:
-                _c = "<Cannot fetch text from file>"
-            finally:
-                os_remove(_fn)
+                _c = "<Không thể chuyển đổi văn bản>"
+
+            os_remove(_fn)
+            #print(r"{0}".format(_c))
             return {"text": _c} 
         else:
-            _img = imread(f"./{_fn}")
+            _img = imread(f"{_fn}")
             os_remove(_fn)
             _img = cvtColor(_img, COLOR_BGR2GRAY)
             threshold(_img, 0, 255, THRESH_OTSU | THRESH_BINARY, _img)
             _img = PILImage.fromarray(_img)
-            return {"text": pytesseract.image_to_string(_img, lang=lang, output_type= pytesseract.Output.STRING)}
+            return {"text": pytesseract.image_to_string(_img, lang=lang, config=r'--tessdata-dir "./tessdata"',  output_type= pytesseract.Output.STRING)}
 
 @server.get("/user-subjects/")
 async def get_subjects(form: LoginForm):
@@ -166,6 +176,7 @@ async def get_content(q: TextQuery):
         with Session() as conn:
 
             _texts = conn.execute(text(f"SELECT subject, content FROM {q.email.split('@')[0]}_texts WHERE name='{q.name}'")).fetchall()
+            #print(_texts[0][1])
             return {"subject": _texts[0][0], "content": _texts[0][1]}
 
 #reference: https://blog.luyencode.net/trich-rut-tu-khoa-tu-dong-voi-hoc-khong-giam-sat/
@@ -200,3 +211,13 @@ async def get_user_status(credentials: LoginForm):
                     else:
                         _total_count = len(conn.execute(text(f"SELECT * FROM {credentials.email.split('@')[0]}_texts")).fetchall())
                         return {'status': ['not_practised', _total_count]}
+
+@server.get("/generate_summary/{question_num}")
+async def generate_summary(text: TextQuery, question_num: int):
+    _c = check_credentials(text.email, text.pw)
+    if _c:
+        _summary = f''
+        
+
+if __name__ == '__main__':
+    uvicorn.run('server:server', reload=True)

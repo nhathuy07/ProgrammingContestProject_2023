@@ -7,13 +7,16 @@ if platform.system() == 'Windows':
 
 import mimetypes
 import plyer
+from functools import partial
 from kivy.base import EventLoop
+from kivy.metrics import dp
 from kivy.core.window import Window
+from kivy import clock
 from kivymd import fonts_path
 from kivy import properties
 from kivymd import app
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix import widget, screenmanager, screen, snackbar, card, dialog, button, menu, textfield
+from kivymd.uix import widget, screenmanager, screen, snackbar, card, dialog, button, menu, textfield, spinner
 from kivymd.uix.list import ThreeLineListItem, IRightBodyTouch, OneLineAvatarListItem
 from kivy.uix.screenmanager import CardTransition
 from kivy.uix.image import Image as KvImage
@@ -45,6 +48,14 @@ FONT_DIR = "./UI/Fonts"
 
 KEYRING_PLACEHOLDER = namedtuple('Credentials', ['username','password'])
 
+# Reference: https://kivymd.readthedocs.io/en/0.104.0/components/spinner/index.html
+class LoadingScreen(dialog.MDDialog):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.title = 'Đang tải...'
+        
+    
+
 class Item(OneLineAvatarListItem):
     divider = None
     source = properties.StringProperty()
@@ -56,21 +67,28 @@ class ScreenMan(screenmanager.MDScreenManager):
 class WelcomeScreen(screen.MDScreen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._loading_anim = LoadingScreen()
         
 
-    def submit(self, user: str, pw: str):
+    def actual_submit(self, user: str, pw: str):
+        
         _r = requests.post(url=f"{HTTP_ENDPOINT}/signin", json={"email": user, "pw": pw})
-        print(_r.status_code)
         if (_r.status_code == 200):
             if keyring.get_credential('system', None):
                 keyring.delete_password('system', keyring.get_credential('system', None).username)
             keyring.set_password("system", user, pw)
             _snackbar = snackbar.Snackbar(text=_r.json()["detail"], bg_color = (0.55, 0.76, 0.29, 1))
             _snackbar.open()
-            return True
-        elif (_r.status_code == 400):
+        else:
             _snackbar = snackbar.Snackbar(text=_r.json()["detail"], bg_color = (233/255, 30/255, 99/255, 1))
             _snackbar.open()
+    
+    def submit(self, user: str, pw: str):
+        self._loading_anim.open()
+        clock.Clock.schedule_once(lambda _: self.actual_submit(user, pw))
+        self._loading_anim.dismiss()
+        clock.Clock.schedule_once(lambda _: app.MDApp.get_running_app().reload_screen(2, "right"))
+        
 
 class SignupForm(screen.MDScreen):
     def __init__(self, *args, **kwargs):
@@ -127,6 +145,12 @@ class SignupForm(screen.MDScreen):
 class HomePage(screen.MDScreen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def on_pre_enter(self, *args):
+        self.ids.docslist.refresh_data()
+        return super().on_pre_enter(*args)
+        
+
     def _reload_greetings(self):
         self.ids.greetings.text = "Xin chào, " + keyring.get_credential('system', None).username.split('@')[0]
         self.status_bar_state = {
@@ -192,15 +216,16 @@ class DocsList(MDRecycleView):
     data = properties.ListProperty([])
     def __init__(self, **kwargs):
         super(DocsList, self).__init__(**kwargs)
-        
+        self.loading_anim = LoadingScreen()        
         self.data = []
 
     def get_data_length(self):
         return len(self.data)
     
     def refresh_data(self):
+        
         _r = requests.get(f"{HTTP_ENDPOINT}/get-texts", json = {"email": keyring.get_credential("system", None).username, "pw": keyring.get_credential("system", None).password})
-        print(_r.json())
+        self.loading_anim.dismiss()
         self.data = [
             {"title": f"{name}",
              "icon": u"📕",
@@ -211,11 +236,13 @@ class DocsList(MDRecycleView):
             } for name, subject in _r.json()["texts"]
         ]
         self.refresh_from_data(self.data)
+    
 
 class NewFile(screen.MDScreen):
     _chosen_lang = properties.StringProperty('vie')
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._loading_anim = LoadingScreen()
         self.camera = None
         self.layout = None
         self.files = []
@@ -252,6 +279,7 @@ class NewFile(screen.MDScreen):
         )
 
         EventLoop.window.bind(on_keyboard=self.hook_keyboard)
+        
     
     def get_available_subjects(self):
         _c = keyring.get_credential('system', None)
@@ -287,19 +315,27 @@ class NewFile(screen.MDScreen):
             _f = filedialog.askopenfilenames()
             self.process_file(_f)
     
-    def process_file(self, files: list[str]):
+    def actual_process_file(self, files: list[str]):
+        self._loading_anim.open()
         url = f"{HTTP_ENDPOINT}/image-processing/{self._chosen_lang}"
         if files != None:
             for fi in files:
                 if files != '':
                     if fi.endswith('.txt'):
-                        with open(fi, 'r', encoding='utf16', errors='ignore') as rf:
+                        with open(fi, 'r', encoding='utf8', errors='ignore') as rf:
                             self.ids.textfield.text += "\n".join(rf.readlines())
                     else:
                         print(mimetypes.guess_type(fi, strict=False))
                         _r = requests.get(url, files = {'fi': open(fi, 'rb')})
                         print(_r.url)
-                        self.ids.textfield.text += f"\n{_r.json()['text']}"
+                        self.ids.textfield.text += f"{_r.json()['text']}\n"
+
+
+    def process_file(self, files: list[str]):
+        self._loading_anim.open()
+        clock.Clock.schedule_once(lambda _: self.actual_process_file(files))
+        self._loading_anim.dismiss()
+
 
     def hook_keyboard(self, window, key, *args):
         if key == 27:
@@ -323,11 +359,12 @@ class NewFile(screen.MDScreen):
         self.add_subject_dlg.dismiss()
         self.change_subject(self.add_subject_dlg.content_cls._t.text)
 
-    def upload_file(self):
+    def actual_upload_file(self):
         _name = self.ids.name.text
         _content = self.ids.textfield.text
         _subject = self._chosen_subject
         _status = snackbar.Snackbar()
+        self._loading_anim.open()
         if not _subject or not _name or not _content:
             _status.bg_color = (233/255, 30/255, 99/255, 1)
             _status.text = "Vui lòng điền tên / chủ đề / nội dung"
@@ -348,8 +385,13 @@ class NewFile(screen.MDScreen):
             _status.duration = 1
             _status.open()
             if _r.status_code == 200:
-                app.MDApp.get_running_app().reload_screen(2)
-
+                self._loading_anim.dismiss()
+                clock.Clock.schedule_once(lambda _: app.MDApp.get_running_app().reload_screen(2, "right"))
+        
+    def upload_file(self):
+        self._loading_anim.open()
+        clock.Clock.schedule_once(lambda _: self.actual_upload_file())
+        
 
 class AddSubjectDialog(MDBoxLayout):
     def __init__(self, **kwargs):
@@ -389,14 +431,17 @@ class DocsCard(card.MDCard):
 
 class TextBrowser(screen.MDScreen):
     text_name = properties.StringProperty()
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+        self._loading_anim = LoadingScreen()
     def on_enter(self, *args):
-        self.get_text()
+        self._loading_anim.open()
+        clock.Clock.schedule_once(lambda _: self.get_text())
         return super().on_enter(*args)
     
     def get_text(self):
+        
         _r = requests.get(f"{HTTP_ENDPOINT}/get-text-content", json=
                           {
                             "email": keyring.get_credential('system', None).username,
@@ -407,7 +452,7 @@ class TextBrowser(screen.MDScreen):
         self.ids.text_name.text = self.text_name.upper()
         self.ids.content_box.text = str(_r.json()["content"])
         self.ids.content_box.cursor = (0, 0)
-
+        self._loading_anim.dismiss()
 class GoalSetter(screen.MDScreen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
