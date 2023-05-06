@@ -177,7 +177,7 @@ ScreenMan:
                         padding: 5, 5
                         md_bg_color: (63/255, 81/255, 181/255, 1)
                         on_press: 
-                            if root.submit(email.text, pw.text) == True: app.reload_screen(2, "right")
+                            root.submit(email.text, pw.text)
                     MDTextButton:
                         text: 'Chưa có tài khoản? Đăng kí'
                         halign: 'center'
@@ -292,7 +292,7 @@ ScreenMan:
     name: "HomePage"
     on_enter: 
         root._reload_greetings()
-        root.ids.docslist.refresh_data()
+        
     canvas.before:
         Color:
             rgba: (63/255, 81/255, 181/255, 1)
@@ -893,7 +893,7 @@ ScreenMan:
                 
             MDFillRoundFlatButton:
                 text: 'Hoàn tất'
-                size_hint: 1, 0.1
+                size_hint: 1, 0.07
                 md_bg_color: (63/255, 81/255, 181/255, 1)
                 font_size: 16
                 bold: True
