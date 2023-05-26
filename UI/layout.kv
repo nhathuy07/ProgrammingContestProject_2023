@@ -19,6 +19,11 @@ ScreenMan:
     Btn:
         text: 'Mở file'
 
+<CustomRoundFlatBtn@MDRoundFlatButton>:
+    font_name: 'OpenSans'
+    font_size: 22
+
+
 <Item>
     ImageLeftWidget:
         source: root.source
@@ -27,19 +32,35 @@ ScreenMan:
     font_name: "OpenSans"
 
 <KeywordsView>:
-    viewclass: 'MDRoundFlatButton'
+    viewclass: 'CustomRoundFlatBtn'
     spacing: 20
     padding: 5, 5
     do_scroll_y: False
     size_hint_x: 1
-    size_hint_y: 0.7
+    size_hint_y: 1
     RecycleBoxLayout:
         spacing: 5
         size_hint_y: 1
         size_hint_x: None
         height: self.minimum_height
         width: self.minimum_width
-        
+
+
+<DaysOfWeekView>:
+    viewclass: 'DaysOfWeekBtn'
+    spacing: 20
+    padding: 5, 5
+    do_scroll_y: False
+    size_hint_x: 1
+    size_hint_y: 1
+    padding: 0, 5, 0,5
+    RecycleBoxLayout:
+
+        spacing: 5
+        size_hint_y: 1
+        size_hint_x: None
+        height: self.minimum_height
+        width: self.minimum_width
 
 
 # reference: https://www.geeksforgeeks.org/python-recycleview-in-kivy/
@@ -49,13 +70,101 @@ ScreenMan:
     padding:10, 0
   
     RecycleBoxLayout:
-        default_size: None, dp(110)
-  
+        default_size: None, dp(100)
         # defines the size of the widget in reference to width and height
         default_size_hint: 1, None 
         size_hint_y: None
         height: self.minimum_height
         orientation: 'vertical' # defines the orientation of data items
+
+<NeedsImprovementCard>:
+    size_hint_x: 3
+    theme_text_color: 'Primary'
+    tertiary_theme_text_color: 'Custom'
+    tertiary_text_color: (148/255, 16/255, 16/255)
+    tertiary_font_style: "Button"
+    font_style: 'Body1'
+
+
+<DetailedResultItem>:
+    theme_text_color: 'Custom'
+    tertiary_theme_text_color: 'Custom'
+    text_color: 1, 1, 1, 1
+    tertiary_text_color: (175/255, 242/255, 92/255)
+    tertiary_font_style: "Button"
+    ImageLeftWidget:
+        source: root.grade_icon_path
+
+<DetailedResultList>:
+    viewclass: 'DetailedResultItem'  # defines the viewtype for the data items.
+    spacing: 20
+    padding:10, 0
+    do_scroll_y: True
+    do_scroll_x: True
+    RecycleBoxLayout:
+        default_size: None, dp(64)
+        # defines the size of the widget in reference to width and height
+        default_size_hint: 1, None 
+        size_hint_y: None
+        size_hint_x: 4
+        height: self.minimum_height
+        width: self.minimum_width
+        orientation: 'vertical' # defines the orientation of data items
+
+<SubjectCheckbox>:
+    ImageLeftWidget:
+        id: check_icon
+
+<SubjectChooserList>:
+    viewclass: 'SubjectCheckbox'  # defines the viewtype for the data items.
+    spacing: 20
+    padding:10, 0
+    do_scroll_y: True
+    do_scroll_x: True
+    RecycleBoxLayout:
+        id: recycleLayout
+        default_size: None, dp(64)
+        # defines the size of the widget in reference to width and height
+        default_size_hint: 1, None 
+        size_hint_y: None
+        size_hint_x: 1
+        height: self.minimum_height
+        width: self.minimum_width
+        orientation: 'vertical' # defines the orientation of data items
+
+<SwappableCard>:
+    radius: 10
+    padding: 5, 5
+    #md_bg_color: root.bgColor
+    md_bg_color: root.bgColor
+    default_size_hint: 1, 0.2
+    size_hint_x: 1
+    spacing: 10
+    on_release: root.prepare_swap(root.text)
+    MDCard:
+        radius: 100
+        padding: 0, 0
+        size_hint: None, 1
+        width: root.height * 0.8
+        md_bg_color: 0, 0, 0, 0
+        MDLabel:
+            font_name: "OpenSans"
+            text: u'↕'
+            bold: True
+            halign: 'center'
+            valign: 'center'
+            font_size: 28
+            #color: root.bgColor
+            color: 1, 1, 1, 1
+    MDLabel:
+        id: card_label
+        size_hint: 1, 1
+        text: root.text[1]
+        font_name: "OpenSans"
+        color: 1, 1, 1, 1
+        bold: True
+        font_size: 21
+
 
 <DocsCard>:
     MDCard:
@@ -68,7 +177,7 @@ ScreenMan:
         MDCard:
             radius: 15
             padding: 0, 0
-            size_hint: 0.4, 1
+            size_hint: 0.3, 1
             md_bg_color: 255/255, 229/255, 238/255
             MDLabel:
                 halign: "center"
@@ -82,7 +191,7 @@ ScreenMan:
             MDLabel:
                 color: 0, 0, 0, 1
                 text: root.title
-                font_size: 20
+                font_size: 23
                 color: 36/255, 46/255, 104/255, 1
                 bold: True
                 halign: "left"
@@ -92,11 +201,11 @@ ScreenMan:
                     halign: 'left'
                     italic: True
                     color: 100/255, 100/255, 100/255, 1  
-                    font_size: 14
+                    font_size: 16
                     
 <Btn@MDFillRoundFlatButton>:
     font_name: "OpenSans"
-    font_size: 15
+    font_size: 18
     bold: True
 
 <MDTextField>:
@@ -126,13 +235,14 @@ ScreenMan:
             MDLabel:
                 color: (63/255, 81/255, 181/255, 1)
                 text: "Đăng nhập"
-                font_size: 30
+                font_size: 36
                 bold: True
                 halign: "center"    
             MDLabel:
                 text: "Để việc ôn tập kiến thức trở nên dễ dàng hơn"
                 color: (100/255, 100/255, 100/255, 1)
-                font_size: 16
+                font_size: 20
+                font_name: 'OpenSans'
                 halign: "center"
                 valign: 'top'
 
@@ -316,8 +426,8 @@ ScreenMan:
                 MDLabel:
                     id: greetings
                     text: app.get_raw_username(app.get_credential().username)
-                    font_size: 24
-                    size_hint_y: 0.5
+                    font_size: 26
+                    size_hint_y: 0.6
                     bold: True
                     halign: "left"
                     #color: (63/255, 81/255, 181/255, 1)
@@ -343,13 +453,14 @@ ScreenMan:
                     
 
                     MDCard:
-                        id: status_bar
+                        
                         padding: 10, 10, 10, 10
                         orientation: 'vertical'
                         md_bg_color: (250/255, 227/255, 173/255)
                         id: status_banner
                         shadow_softness: 12
                         elevation: 1.4
+                        on_release: root.status_bar_clicked()
 
                         GridLayout:
                             cols: 2
@@ -357,28 +468,30 @@ ScreenMan:
                             MDCard:
                                 id: icon_box
                                 md_bg_color: (255 / 255, 222 / 255, 129 / 255)
-                                size_hint_x: 0.27
+                                size_hint_x: 0.22
                                 MDLabel:
                                     id: icon
                                     font_name: 'seguiemj'
-                                    text: '✨'
+                                    text: ''
                                     halign: 'center'
                                     font_size: 32
                             BoxLayout:
                                 orientation: 'vertical'
                                 MDLabel:
-                                    id: primary 
+                                    id: secondary
                                     font_size: 16
                                     bold: True
-                                    text: "Hãy thêm tài liệu đầu tiên"
-                                    color: (66/255, 49/255, 10/255)
+                                    text: ""
+                                    color: (0, 0, 0, 0.5)
+                                    size_hint_y: 0.3
                                 MDLabel:
-                                    id: secondary
-                                    font_size: 14
-                                    text: "Để bắt đầu ôn tập"
-                                    color: (100/255, 100/255, 100/255)
-                        
-                    
+                                    id: primary 
+                                    
+                                    bold: True
+                                    text: ""
+                                    font_size: 26
+                                    color: (0, 0, 0,0.85)
+                                    size_hint_y: 0.7
 
                 BoxLayout:
                     padding: 10, 0, 10, 10
@@ -394,7 +507,7 @@ ScreenMan:
 
                         MDLabel:
                             text:  "Tài liệu của bạn"
-                            font_size: 16
+                            font_size: 21
                             halign: "left"
                             valign: "center"
                             bold: False
@@ -439,7 +552,7 @@ ScreenMan:
                                 id: filter_goal
                                 size_hint: 0.5, 1
                                 text: 'Dựa theo mục tiêu'
-                                font_size:16
+                                font_size: 20
                                 bold: True
                                 italic: True
                                 halign: 'center'
@@ -451,7 +564,7 @@ ScreenMan:
                                 id: filter_all
                                 size_hint: 0.5, 1
                                 text: 'Tất cả'
-                                font_size:16
+                                font_size: 20
                                 halign: 'center'
                                 valign: 'center'
                                 on_press: root.switch_filter("all")
@@ -466,7 +579,7 @@ ScreenMan:
                                 app.reload_screen(3)
                             md_bg_color: (63/255, 81/255, 181/255, 1)
                             text: 'Thêm tài liệu'
-                            font_size: 15
+                            font_size: 18
 
 
                         MDRoundFlatButton:
@@ -476,7 +589,7 @@ ScreenMan:
                             text: 'Lên kế hoạch'
                             bold: True
                             halign: 'center'
-                            font_size: 15
+                            font_size: 18 
                             on_press:
                                 app.reload_screen(5)
 
@@ -539,7 +652,7 @@ ScreenMan:
                     MDLabel:
                         text: "Chụp ảnh (OCR)"
                         halign: "center"
-                        font_size: 15
+                        font_size: 21
                 MDCard:
                     id: browse_file_btn
                     orientation: "vertical"
@@ -558,7 +671,7 @@ ScreenMan:
                     MDLabel:
                         text: "Nhập từ file"
                         halign: "center"
-                        font_size: 15
+                        font_size: 21
             MDTextField:
                 size_hint_x: 1
                 id: name
@@ -608,8 +721,7 @@ ScreenMan:
                     root.upload_file()
 
 <TextBrowser>:
-    on_enter:
-        self.ids.keywordsview.reload_keywords()
+
     BoxLayout:
         orientation: "vertical"
         spacing: 10
@@ -620,10 +732,6 @@ ScreenMan:
             Rectangle:
                 pos: self.pos
                 size: self.size
-
-        Image:
-            size_hint_y: 0.2
-            source: "UI/Images/login.png"
         
         MDCard:
             orientation: "vertical"
@@ -634,7 +742,7 @@ ScreenMan:
             radius: 15
             spacing: 20
             MDCard:
-                size_hint_y: 0.13
+                size_hint_y: 0.1
                 spacing: 5
                 orientation: 'vertical'
                 MDLabel:
@@ -642,13 +750,12 @@ ScreenMan:
                     id: subject
                     bold: False
                     color: (63/255, 81/255, 181/255, 1)
-                    font_size: 15
-                    
+                    font_size: 18    
                     
                 MDLabel:
                     id: text_name
                     bold: True
-                    font_size: 24
+                    font_size: 28
                     color: 36/255, 46/255, 104/255, 1
                     size_hint_y: 0.5
             MDCard:
@@ -656,7 +763,7 @@ ScreenMan:
                 shadow_softness: 12
                 orientation: 'vertical'
                 padding: 15, 15, 15, 15
-                size_hint_y: 0.9
+                size_hint_y: 0.85
                 spacing: 10
                 
                 #Keywords area
@@ -664,30 +771,31 @@ ScreenMan:
                     cols: 2
                     orientation: 'lr-tb'
                     spacing: 4
-                    
-                    size_hint_y: 0.1
+                    padding: 0, 0, 0, 0
+                    size_hint_y: 0.05
                     MDLabel:
                         size_hint_x: 0.1
-                        size_hint_y: 0.2
+                        size_hint_y: 0.07
                         text: u'🔑'
                         font_name: 'seguiemj'
                         font_size: 20
                         valign: 'top'
                         halign: 'center'
                     MDLabel:
-                        text: "Từ khóa"
-                        font_size: 14
+                        text: "Từ khóa (nhấn để xem chi tiết)"
+                        font_size: 18
                         halign: "left"
                         valign: "top"
                         bold: False
                         color: (63/255, 81/255, 181/255, 1)
-                        size_hint_y: 0.2
+                        size_hint_y: 0.1
                         size_hint_x: 0.8
                         padding: 0, 0
                 KeywordsView:
                     id: keywordsview
                     text_name: root.text_name
-                    size_hint_y: 0.2
+                    text_content: root._content
+                    size_hint_y: 0.15
 
                 #Content area
                 GridLayout:
@@ -695,7 +803,7 @@ ScreenMan:
                     orientation: 'lr-tb'
                     spacing: 4
                     
-                    size_hint_y: 0.2
+                    size_hint_y: 0.1
                     MDLabel:
                         size_hint_x: 0.1
                         size_hint_y: 0.2
@@ -706,7 +814,7 @@ ScreenMan:
                         halign: 'center'
                     MDLabel:
                         text: "Nội dung"
-                        font_size: 14
+                        font_size: 18
                         halign: "left"
                         valign: "top"
                         bold: False
@@ -715,33 +823,62 @@ ScreenMan:
                         size_hint_x: 0.8
                         padding: 0, 0
 
-                MDTextField:
-                    mode: 'rectangle'
-                    padding: (0, 0, 0, 0)
-                    id: content_box
-                    text_color_normal: 0, 0, 0, 1
-                    color_mode: 'custom'
-                    line_color: 1, 1, 1, 1
-                    #mode: 'rectangle'
-                    multiline: True
-                    size_hint_y: 0.8
+                ScrollView:
+                    do_scroll_y: True
+                    do_scroll_x: False
+                    MDLabel:
+                        font_size: 18
+                        mode: 'rectangle'
+                        padding: (0, 15, 0, 15)
+                        id: content_box
+                        text_color_normal: 0, 0, 0, 1
+                        color_mode: 'custom'
+                        line_color: 1, 1, 1, 1
+                        #mode: 'rectangle'
+                        multiline: True
+                        size_hint_y: None
+                        height: self.texture_size[1]
 
             GridLayout:
-                spacing: 15
+                spacing: 5
                 padding: 0, 0, 0, 0
-                cols: 2
-                rows: 1
+                cols: 1
+                rows: 2
                 size_hint_x: 1
-                size_hint_y: 0.14
+                size_hint_y: 0.2
+                GridLayout:
+                    cols: 3
+                    rows: 1
+                    spacing: 10
+                    Btn:
+                        font_name: 'seguiemj'
+                        id: minus_btn
+                        text: '➖'
+                        on_release:
+                            root.change_qs_num(-1)
+                    MDTextField:
+                        id: qs_num_disp
+                        hint_text: 'Số câu'
+                        text: str(0)
+                        text_color_normal: (63/255, 81/255, 181/255)
+                    Btn:
+                        id: plus_btn
+                        font_name: 'seguiemj'
+                        text: '➕'
+                        on_release:
+                            root.change_qs_num(1)
+
                 MDCard:
                     #orientation: "vertical"
                     elevation: 2
                     shadow_softness: 12
-                    padding: 5, 5, 5, 5
+                    padding: 5, 0, 5, 0
                     size_hint_x: 0.5
-                    size_hint_y: 0.5
+                    size_hint_y: 1
                     spacing: 5
                     md_bg_color: (63/255, 81/255, 181/255, 1)
+                    on_press:
+                        root.prepare_questionaire()
                     MDLabel:
                         text: u'📝'
                         halign: 'center'
@@ -749,39 +886,13 @@ ScreenMan:
                         valign: 'center'
                         font_size: 36
                         text_color: 1, 1, 1,1
-                        size_hint_x: 0.4
+                        size_hint_x: 0.15
                     MDLabel:
                         text: "Làm bài tập"
                         halign: "center"
-                        font_size: 15
+                        font_size: 21
                         bold: True
                         color: 1, 1, 1, 1
-                MDCard:
-                    spacing: 5
-                    #orientation: "vertical"
-                    padding: 5, 5, 5, 5
-                    elevation: 2
-                    shadow_softness: 12
-                    size_hint_x: 0.5
-                    size_hint_y: 0.5
-                    md_bg_color: (63/255, 81/255, 181/255, 1)
-                    MDLabel:
-                        
-                        text: u'🗃️'
-                        font_size: 36
-                        font_name: "seguiemj"
-                        halign: 'center'
-                        valign: 'center'
-                        text_color: 1, 1, 1,1
-                        size_hint_x: 0.4
-                    MDLabel:
-                        text: "Flashcard"
-                        halign: "center"
-                        font_size: 15
-                        color: 1, 1, 1, 1
-                        bold: True
-                        size_hint_x: 0.6
-            
 <GoalSetter>:
     BoxLayout:
         orientation: "vertical"
@@ -789,7 +900,7 @@ ScreenMan:
         padding: 0, 20, 0, 0
         canvas.before:
             Color:
-                rgba: (181/255, 63/255, 77/255, 1)
+                rgba: (211/255, 148/255, 0, 1)
             Rectangle:
                 pos: self.pos
                 size: self.size
@@ -797,8 +908,8 @@ ScreenMan:
             size_hint_y: 0.1
             padding: 20, 0, 20, 0
             MDLabel:
-                text: 'Đặt mục tiêu'
-                font_size: 24
+                text: 'Đặt mục tiêu hằng ngày'
+                font_size: 26
                 font_name: 'OpenSans'
                 bold: True
                 color: 1, 1, 1, 1
@@ -808,93 +919,412 @@ ScreenMan:
             shadow_softness: 12
             elevation: 2.4
             orientation: 'vertical'
-            padding: 10, 10, 10, 10
-            spacing: 10
-            GridLayout:
-                cols: 2
-                rows: 7
-                orientation: 'tb-lr'
+            padding: 15, 0, 15, 15
+            spacing: 15
+
+
+            DaysOfWeekView:
+                id: dowview
+                size_hint_y: 0.1
+            MDCard:
+                elevation: 2.6
+                shadow_softness: 12
+                orientation: 'vertical'
+                padding: 10, 10, 10, 10
                 spacing: 10
-                MDLabel:
-                    text: 'Thứ hai'
-                    font_size: 16
-                    size_hint_x: 0.3
-                    valign: 'center'
+                size_hint_y: 0.9
+                MDGridLayout:
+                    cols: 1
+                    rows: 4
+                    orientation: 'lr-tb'
+                    MDLabel:
+                        text: 'Số lượt ôn tập'
+                        font_size: 20
+                        size_hint_y: 0.1
+
+                    MDBoxLayout:
+                        spacing: 10
+                        size_hint_y: 0.1
+                        Btn:
+                            md_bg_color: (160/255 * 1.5, 112/255 * 1.5, 0)
+                            font_name: 'seguiemj'
+                            id: minus_btn
+                            text: '➖'
+                            on_release:
+                                root.change_qs_num(-1)
+                        MDRectangleFlatButton:
+                            size_hint_x: 0.6
+                            text: '5'
+                            text_color: (160/255, 112/255, 0)
+                            id: goal_count_disp
+                            line_color: 'grey'
+                            font_size: 20
+                            font_name: 'OpenSans'
+                            bold: True
+                        Btn:
+                            md_bg_color: (160/255 * 1.5, 112/255 * 1.5, 0)
+                            id: plus_btn
+                            font_name: 'seguiemj'
+                            text: '➕'
+                            on_release:
+                                root.change_qs_num(1)
                     
-                MDLabel:
-                    text: 'Thứ ba'
-                    font_size: 16
-                    size_hint_x: 0.3
+                    MDLabel:
+                        text: 'Chọn một / nhiều chủ đề ôn tập'
+                        font_size: 20
+                        size_hint_y: 0.1
+                    SubjectChooserList:
+                        id: subjectchooserlist
+                Btn:
+                    size_hint_x: 1.0
+                    md_bg_color: (160/255 * 1.5, 112/255 * 1.5, 0)
+                    text: 'Lưu'
+                    on_release: 
+                        root.save_goals()
+            
+<MCQPage>:
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDCard:
+            md_bg_color: (0.321, 0.298, 0.431, 1.000)
+            radius: 0, 0, 15, 15
+            padding: 10, 10, 10, 10
+            orientation: 'vertical'
+            size_hint_y: 0.6
+            spacing: 5
+            MDBoxLayout:
+                size_hint_y: 0.07
+                MDTextButton:
+                    font_name: 'seguiemj.ttf'
+                    id: exit_to_homescreen 
+                    text: u'◀️'
+                    font_size: 24
+                    size_hint_x: 0.15
                     valign: 'center'
+                    on_release:
+                        app.reload_screen(2)
+                MDProgressBar:
+                    id: progressbar
+                    color: (0.55, 0.76, 0.29, 1)
 
-                MDLabel:
-                    text: 'Thứ tư'
-                    font_size: 16
-                    size_hint_x: 0.3
-                    valign: 'center'
-                MDLabel:
-                    text: 'Thứ năm'
-                    font_size: 16
-                    size_hint_x: 0.3
-                    valign: 'center'
-                MDLabel:
-                    text: 'Thứ sáu'
-                    font_size: 16
-                    size_hint_x: 0.3
-                    valign: 'center'
-                MDLabel:
-                    text: 'Thứ bảy'
-                    font_size: 16
-                    size_hint_x: 0.3
-                    color: (181/255, 63/255, 77/255, 1)
-                    valign: 'center'
-                MDLabel:
-                    text: 'Chủ nhật'
-                    font_size: 16
-                    size_hint_x: 0.3
-                    color: (181/255, 63/255, 77/255, 1)
-                    valign: 'center'
-                
-                # Goal dropdown button
-                MDRectangleFlatButton:
-                    id: g_mon
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
-                
-                MDRectangleFlatButton:
-                    id: g_tue
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
-                
-                MDRectangleFlatButton:
-                    id: g_wed
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
-                
-                MDRectangleFlatButton:
-                    id: g_thu
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
+            MDLabel:
+                id: qs_num
+                text: "#️⃣ CÂU 1/10"
+                font_name: "OpenSans"
+                color: 1,1,1,0.8
+                font_size: 21
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
 
-                MDRectangleFlatButton:
-                    id: g_fri
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
-
-                MDRectangleFlatButton:
-                    id: g_sat
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
-                
-                MDRectangleFlatButton:
-                    id: g_sun
-                    text: '--Chọn chủ đề--'
-                    size_hint_x: 0.6
-                
-            MDFillRoundFlatButton:
-                text: 'Hoàn tất'
-                size_hint: 1, 0.07
-                md_bg_color: (63/255, 81/255, 181/255, 1)
-                font_size: 16
+            MDLabel:
+                id: prompt
+                text: "✒️ ĐIỀN VÀO CHỖ TRỐNG"
+                font_name: "OpenSans"
+                color: 1,1,1,0.8
+                font_size: 21
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+            MDLabel:
+                id: problem
+                font_name: "OpenSans"
+                font_size: 25
+                color: 1,1,1,1
+                bold: True
+                size_hint_y: 1 - 0.1 * 2 - 0.07
+        MDGridLayout:
+            size_hint_y: 0.4
+            padding:10, 30, 10, 10
+            spacing: 15
+            rows: 2
+            MDRectangleFlatButton:
+                id: answers_dropdown
+                text: "--Chọn đáp án--"
+                line_color: 'grey'
+                valign: 'center'
+                text_color: (0.321, 0.298, 0.431, 1.000)
+                size_hint_x: 1.0
                 bold: True
             
+            MDFillRoundFlatButton:
+                id: submit
+                text: "Xác nhận"
+                size_hint_x: 1.0
+                md_bg_color: (63/255, 81/255, 181/255, 1)
+                bold: True
+
+<ShortAnswerPage>:
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDCard:
+            id: question_panel
+            md_bg_color: (0.321, 0.298, 0.431, 1.000)
+            radius: 0, 0, 15, 15
+            padding: 10, 10, 10, 10
+            orientation: 'vertical'
+            size_hint_y: 0.6
+            spacing: 5
+            MDBoxLayout:
+                size_hint_y: 0.07
+                MDTextButton:
+                    id: exit_to_homescreen
+                    font_name: 'seguiemj.ttf'
+                    text: u'◀️'
+                    font_size: 24
+                    size_hint_x: 0.15
+                    valign: 'center'
+                    on_release:
+                        app.reload_screen(2)
+                MDProgressBar:
+                    id: progressbar
+                    color: (0.55, 0.76, 0.29, 1)
+
+            MDLabel:
+                id: qs_num
+                text: "#️⃣ CÂU 1/10"
+                font_name: "OpenSans"
+                color: 1,1,1,0.8
+                font_size: 18
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+
+            MDLabel:
+                id: prompt
+                text: "✒️ ĐIỀN VÀO CHỖ TRỐNG"
+                font_name: "OpenSans"
+                color: 1,1,1,0.8
+                font_size: 18
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+            MDLabel:
+                font_name: "OpenSans"
+                font_size: 25
+                text: root.problem
+                color: 1,1,1,1
+                bold: True
+                size_hint_y: 1 - 0.1 * 3 - 0.07
+
+            MDLabel:
+                id: validation_result
+                font_name: "OpenSans"
+                color: 1, 1, 1, 1
+                font_size: 18
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+
+        MDGridLayout:
+            size_hint_y: 0.4
+            padding:10, 30, 10, 10
+            spacing: 15
+            rows: 4
+            MDTextField:
+                id: ans_input_1
+                hint_text: "Đáp án 1"
+                valign: 'center'
+                text_color_normal: (0.321, 0.298, 0.431, 1.000)
+                size_hint_x: 1.0
+                bold: True
+
+            MDTextField:
+                id: ans_input_2
+                hint_text: "Đáp án 2"
+                valign: 'center'
+                text_color_normal: (0.321, 0.298, 0.431, 1.000)
+                size_hint_x: 1.0
+                bold: True
+
+            MDTextField:
+                id: ans_input_3
+                hint_text: "Đáp án 3"
+                valign: 'center'
+                text_color_normal: (0.321, 0.298, 0.431, 1.000)
+                size_hint_x: 1.0
+                bold: True
+            
+            MDFillRoundFlatButton:
+                id: submit
+                text: "Xác nhận"
+                size_hint_x: 1.0
+                md_bg_color: (63/255, 81/255, 181/255, 1)
+                bold: True
+                font_size: 18
+                on_press:
+                    root.submit()
+
+<MatchingPage>:
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: 10
+        padding: 0, 0, 0, 10 
+        MDCard:
+            id: question_panel
+            md_bg_color: (0.321, 0.298, 0.431, 1.000)
+            radius: 0, 0, 15, 15
+            padding: 10, 10, 10, 10
+            orientation: 'vertical'
+            size_hint_y: 0.6
+            spacing: 5
+            MDBoxLayout:
+                size_hint_y: 0.07
+                MDTextButton:
+                    id: exit_to_homescreen
+                    font_name: 'seguiemj.ttf'
+                    text: u'◀️'
+                    font_size: 24
+                    size_hint_x: 0.15
+                    valign: 'center'
+                    on_release:
+                        app.reload_screen(2)
+                MDProgressBar:
+                    id: progressbar
+                    color: (0.55, 0.76, 0.29, 1)
+
+            MDLabel:
+                id: qs_num
+                text: "#️⃣ CÂU 1/10"
+                font_name: "OpenSans"
+                color: 1,1,1,0.8
+                font_size: 18
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+
+
+            MDLabel:
+                id: prompt
+                text: "✒️ SẮP XẾP CÁC TỪ THEO THỨ TỰ"
+                font_name: "OpenSans"
+                color: 1,1,1,0.8
+                font_size: 18
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+            MDLabel:
+                font_name: "OpenSans"
+                font_size: 25
+                text: root.problem
+                color: 1,1,1,1
+                bold: True
+                size_hint_y: 1 - 0.1 * 3 - 0.07
+
+            MDLabel:
+                id: validation_result
+                font_name: "OpenSans"
+                color: 1, 1, 1, 1
+                font_size: 18
+                bold: True
+                size_hint_y: 0.07
+                valign: 'top'
+        
+        ScrollView:
+            size_hint_y: 0.4
+            MDGridLayout:
+                id: gridlayout
+                orientation: 'lr-tb'
+                rows: 5
+                size_hint_y: 1.3
+                size_hint_x: 1
+                spacing: 10
+                padding: 10, 0
+
+        MDFillRoundFlatButton:
+            id: submit
+            text: "Xác nhận"
+            size_hint_x: 1.0
+            md_bg_color: (63/255, 81/255, 181/255, 1)
+            bold: True
+            font_size: 18
+            on_press:
+                root.submit()
+
+<ResultPage>:
+    id: result
+    md_bg_color: (0.321, 0.298, 0.431, 1.000)
+    MDBoxLayout:
+        padding: 10
+        spacing: 10
+        orientation: 'vertical'
+        MDLabel:
+            
+            id: r_title
+            halign: 'center'
+            font_name: "OpenSans"
+            color: 1,1,1,1
+            font_size: 30
+            bold: True
+            size_hint_y: 0.07
+            valign: 'center'
+
+        MDLabel:
+            id: r_metrics
+            text: "20 câu · 15 ✔️ · 5 ❌".upper()
+            halign: 'center'
+            font_name: "OpenSans"
+            color: 1,1,1,0.8
+            font_size: 21
+            bold: True
+            size_hint_y: 0.07
+            valign: 'center'
+
+        MDBoxLayout:
+            size_hint_y: 0.55
+            canvas.before:
+                Color:
+                    rgba: (0.321 * 0.75, 0.298 * 0.75, 0.431 * 0.75, 1.000)
+                Ellipse:
+                    pos: root.center_x - (root.height * 0.15), root.center_y - (root.height * 0.01)
+                    size: (root.height * 0.3), (root.height * 0.3)
+                    angle_start: 0
+                    angle_end: 360
+
+                Color:
+                    rgba: root.r_gauge_color
+                Ellipse:
+                    
+                    pos: root.center_x - (root.height * 0.15), root.center_y - root.height * 0.01
+                    size: (root.height * 0.3), (root.height * 0.3)
+                    angle_start: 0
+                    angle_end: root.r_percentage_gauge
+            MDBoxLayout:
+                size_hint_y: 0.9
+                canvas.before:
+                    Color:
+                        rgba: (0.321, 0.298, 0.431, 1.000)
+                    Ellipse:
+                        pos: root.center_x - (root.height * 0.12), root.center_y + (root.height * 0.02)
+                        size: (root.height * 0.24), (root.height * 0.24)
+                        angle_start: 0
+                        angle_end: 360
+                MDLabel:
+                    id: r_percentage
+                    halign: "center"
+                    font_name: "OpenSans"
+                    color: 1, 1, 1, 1
+                    font_size: 40
+                    bold: True
+                    valign: 'center'
+                    halign: 'center'
+
+        MDCard:
+            size_hint_y: 0.55
+            md_bg_color: (0.321 * 0.75, 0.298 * 0.75, 0.431 * 0.75, 1.000)
+            elevation: 2.3
+            shadow_softness: 12
+            ScrollView:
+                do_scroll_x: True
+                DetailedResultList:
+                    id: detailedresultlist
+
+        Btn:
+            text: 'Tiếp tục'
+            size_hint_x: 1
+            on_release: app.reload_screen(2)
+
+
+# KNOWN ISSUES
+## Lỗi kết nối SQL khi không tương tác trong thời gian dài (khắc phục bằng cách vào lại app)
+## Thời gian tạo bài tập lâu (do tốc độ phản hồi của OpenAI API)
