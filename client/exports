@@ -1,0 +1,4 @@
+export P4A_RELEASE_KEYSTORE=~/keystores/appkey.keystore
+export P4A_RELEASE_KEYSTORE_PASSWD="Revise@123"
+export P4A_RELEASE_KEYALIAS_PASSWD="Revise@123"
+export P4A_RELEASE_KEYALIAS="reviseapp"
