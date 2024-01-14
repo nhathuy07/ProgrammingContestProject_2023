@@ -18,7 +18,7 @@ from kivymd import fonts_path
 from kivy import properties
 from kivymd import app
 from kivymd.uix.behaviors import RectangularRippleBehavior
-from kivymd.uix.list import TwoLineListItem, TwoLineAvatarListItem, OneLineAvatarListItem
+from kivymd.uix.list import TwoLineListItem, TwoLineAvatarListItem, OneLineAvatarListItem, ImageLeftWidget
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix import widget, screenmanager, screen, snackbar, card, dialog, button, menu, textfield, floatlayout
@@ -41,27 +41,29 @@ if utils.platform == "android":
      request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE, Permission.CAMERA, Permission.INTERNET, Permission.POST_NOTIFICATIONS])
 
 if utils.platform == 'android':
-    ANDROID_ARGS = os.environ.get('ANDROID_APP_PATH')
-    if ANDROID_ARGS == None:
-        ANDROID_ARGS = 'data/user/0/io.huyn.reviseapp/files/app'
-    print('Android app directory is:', ANDROID_ARGS, os_path.exists(ANDROID_ARGS))
+    EXEC_ARGS = os.environ.get('ANDROID_APP_PATH')
+    if EXEC_ARGS == None:
+        EXEC_ARGS = 'data/user/0/io.huyn.reviseapp/files/app'
+    print('Android app directory is:', EXEC_ARGS, os_path.exists(EXEC_ARGS))
 
 else:
-    ANDROID_ARGS = '.'
+    EXEC_ARGS = '.'
 
-Builder.load_file(os.path.join(ANDROID_ARGS, "UI/layout.kv"))
+Builder.load_file(os.path.join(EXEC_ARGS, "UI/layout.kv"))
 
 import captcha.image
 import re
 import random
 from collections import namedtuple
 from string import ascii_lowercase, digits
-fonts: list[str] = ["OpenSans"]
-captchaGenerator = captcha.image.ImageCaptcha(fonts=[os_path.join(ANDROID_ARGS ,"UI/Fonts/OpenSans-Bold.ttf")])
+fonts: list[str] = ["WorkSans"]
+captchaGenerator = captcha.image.ImageCaptcha(fonts=[os_path.join(EXEC_ARGS ,"UI/Fonts/WorkSans-Bold.ttf")])
 
 with open('./http_endpoint.txt', 'r') as fi:
     HTTP_ENDPOINT = f'{fi.readlines()[0]}'
 INTERNET_CONN_ERR = "Vui lòng kiểm tra kết nối Internet!"
+
+
 if platform.system() in ['Windows']:
     Window.size = (720 // 2, 1280 // 2)
 FONT_DIR = "UI/Fonts"
@@ -75,6 +77,7 @@ LANGUAGE_SHORT2FULL: dict[str, str] = {
 }
 
 requests = rq.Session()
+requests.headers.update({'Connection': 'keep-alive'})
 
 # Reference: https://kivymd.readthedocs.io/en/0.104.0/components/spinner/index.html
 class LoadingScreen(dialog.MDDialog):
@@ -226,75 +229,62 @@ class HomePage(screen.MDScreen):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.loading_anim = LoadingScreen()
-        self.current_status_id = ""
-        self.status_bar_state = {
-            "no_files": {
-                "text": "Hãy thêm tài liệu đầu tiên",
-                "secondary_text": "Để bắt đầu ôn tập,",
-                "icon": '📃',
-                "color": (250/255, 227/255, 173/255),
-                "icon_box": (255 / 255, 222 / 255, 129 / 255)
-            }, 
-            "not_practised": {
-                "text": "Bạn hiện có %1 tài liệu",
-                "secondary_text": "Cùng ôn tập nào!",
-                "icon": '📝',
-                "color": (250/255, 227/255, 173/255),
-                "icon_box": (255 / 255, 222 / 255, 129 / 255)
-            },
-            "practised": {
-                "text": "%1 lượt",
-                "secondary_text": "Số lượt ôn tập (hôm nay)",
-                "icon": 'ℹ️',
-                "color": (194/255, 239/255, 255/255),
-                "icon_box": (155/255, 230/255, 255/255),
-            },
-            "needs_practising": {
-                "text": "%1 mục",
-                "secondary_text": "Cần ôn tập thêm (chạm để xem)",
-                "icon": '❗',
-                "color": (255/255, 182/255, 181/255),
-                "icon_box": (255/255, 147/255, 145/255)
-            },
-            "goal_0": {
-                "secondary_text": 'Mục tiêu hôm nay',
-                "text": "Làm %1",
-                "icon": '🎯',
-                "color": (250/255, 227/255, 173/255),
-                "icon_box": (255 / 255, 222 / 255, 129 / 255)
-            },
-            "goal_50": {
-                'secondary_text': 'Tiến trình',
-                'text': 'Đã làm %1 bài',
-                'icon': '📈',
-                "color": (194/255, 239/255, 255/255),
-                "icon_box": (155/255, 230/255, 255/255),
-            },
-            "goal_100": {
-                'secondary_text': 'Thông báo',
-                'text': 'Bạn đã hoàn thành mục tiêu!',
-                'icon': '✅',
-                "color": (194/255, 255/255, 196/255),
-                "icon_box": (173/255, 255/255, 155/255),
-            }
-        }
+        self.subjects_loaded = False
 
+    # def load_subjects_into_ui(self):
+    #     for subject in LABELS_BY_SUBJECT:
+            
+    #         self.ids.subject_chooser.add_widget(SubjectCard(subject_name=LABELS_BY_SUBJECT[subject][0], card_icon=LABELS_BY_SUBJECT[subject][1], subject_fullname = subject))
+
+    def update_suggestion_box(self):
+
+        print(self.ids.docslist.data)
+        if (len(self.ids.docslist.data)) != 0:
+            self.ids.suggestionbox.height =  dp(230)
+            self.ids.suggestionbox_title.text = "Gợi ý tự luyện"
+            self.ids.suggestionbox_subtitle.text = "Dựa trên mục tiêu ôn tập"
+
+        if (len(self.ids.docslist.data)) == 0:
+            self.ids.suggestionbox.height = dp(140)
+            self.ids.suggestionbox_title.text = "Đặt mục tiêu ôn tập"
+            self.ids.suggestionbox_subtitle.text = "Để nhận gợi ý tự luyện"
+            return
+
+    def load_user_status(self):
+        self.status = requests.get(f'{HTTP_ENDPOINT}/user-status-v2'
+                                   , json={
+                                       "email": plyer.keystore.get_key('recall_keyring', 'username'),
+                                       "pw": plyer.keystore.get_key('recall_keyring', 'password')
+                                   }).json()
+        
+        self.ids.progress_counter.text = f"{self.status['current_progress']}/{self.status['threshold']}"
+        if (self.status['current_progress'] >= self.status['threshold']):
+            self.ids.progress_counter_container.md_bg_color = (108/255, 226/255, 203/255,1)
+            
+        else:
+            self.ids.progress_counter_container.md_bg_color = (196/255, 143/255, 255/255)
 
     def on_pre_enter(self, *args):
         self.current_filter = "goal"
         self.ids.docslist.refresh_data()
-        self._update_status_bar()
+        self.load_user_status()
         self.switch_filter('goal')
+        self.update_suggestion_box()
+        if not self.subjects_loaded:
+            # self.load_subjects_into_ui()
+            self.subjects_loaded = True
+
         return super().on_pre_enter(*args)
 
     def status_bar_clicked(self, *args):
+
         if self.current_status_id in ('needs_practising'):
             self.dlg = dialog.MDDialog(
                 type = 'simple',
                 text = 'Lượt ôn tập này sẽ không được tính vào tổng số lượt của bạn.',
                 title = 'Cải thiện kết quả',
                 
-                items = [NeedsImprovementCard(text=_name, tertiary_text=f"độ chính xác: {_acc}%") for _name, _acc in self._r.json()["extras"]],
+                items = [NeedsImprovementCard(text=_name, tertiary_text=f"Độ chính xác: {_acc}%") for _name, _acc in self._r.json()["extras"]],
                 on_touch_up = self.dismiss_dlg
             )
             
@@ -305,48 +295,15 @@ class HomePage(screen.MDScreen):
         self.dlg.dismiss()
 
     def _reload_greetings(self):
-        self.ids.greetings.text = "Xin chào, " + plyer.keystore.get_key('recall_keyring', 'username').split('@')[0]
+        self.ids.greetings.text = plyer.keystore.get_key('recall_keyring', 'username').split('@')[0]
         
-    def _update_status_bar(self):
-        self._r = requests.get(f'{HTTP_ENDPOINT}/get-user-status/', json={
-            "email": plyer.keystore.get_key('recall_keyring', 'username'),
-            "pw": plyer.keystore.get_key('recall_keyring', 'password')
-        })
 
-        self.current_status_id = self._r.json()["status"][0]
-        self.current_status = deepcopy(self.status_bar_state[self.current_status_id])
-
-        if '%1' in self.current_status["secondary_text"]:
-            self.current_status["secondary_text"] = self.current_status["secondary_text"].replace('%1', str(self._r.json()["status"][1]))
-        
-        if '%1' in self.current_status["text"]:
-            self.current_status["text"] = self.current_status["text"].replace('%1', str(self._r.json()["status"][1]))
-
-        self.ids.primary.text = self.current_status["text"]
-        self.ids.primary.font_size = "24sp" if len(self.current_status["text"]) < 23 else "20sp"
-        self.ids.secondary.text = self.current_status["secondary_text"].upper()
-        self.ids.icon.text = self.current_status["icon"]
-        self.ids.status_banner.md_bg_color = self.current_status["color"]
-        self.ids.icon_box.md_bg_color = self.current_status["icon_box"]
 
     def on_enter(self, *args):
         self.loading_anim.dismiss()
         return super().on_enter(*args)
     
     def switch_filter(self, f , *args, **kwargs):
-        self.current_filter = f
-        if f == 'goal':
-            self.ids.filter_goal.font_name = 'UI/Fonts/OpenSans-BoldItalic.ttf'
-            self.ids.filter_all.font_name = 'UI/Fonts/OpenSans-Italic.ttf'
-            
-            self.ids.filter_goal.color = (63/255, 81/255, 181/255, 1)
-            self.ids.filter_all.color = (100/255, 100/255, 100/255, 1)
-        elif f == 'all':
-            self.ids.filter_goal.font_name = 'UI/Fonts/OpenSans-Italic.ttf'
-            self.ids.filter_all.font_name = 'UI/Fonts/OpenSans-BoldItalic.ttf'
-            self.ids.filter_all.color = (63/255, 81/255, 181/255, 1)
-            self.ids.filter_goal.color = (100/255, 100/255, 100/255, 1)
-        
         clock.Clock.schedule_once(lambda _: self.ids.docslist.refresh_data(f == 'goal'))
 
 class LoginWidgets(widget.MDWidget):
@@ -367,32 +324,22 @@ class DocsList(MDRecycleView):
     def refresh_data(self, goal_only = False):
         try:
             
-            _r = requests.get(f"{HTTP_ENDPOINT}/get-texts-and-goals/", json = {"email": plyer.keystore.get_key('recall_keyring', 'username'), "pw": plyer.keystore.get_key('recall_keyring', 'password')})
-            
-            #_goals = requests.get(f'{HTTP_ENDPOINT}/get-goals/', json = {"email": plyer.keystore.get_key('recall_keyring', 'username'), "pw": plyer.keystore.get_key('recall_keyring', 'password')})
-            _goals = _r.json()['comp'][date.today().weekday()].split('::')
+            _r = requests.get(f"{HTTP_ENDPOINT}/get-texts/", json = {"email": plyer.keystore.get_key('recall_keyring', 'username'), "pw": plyer.keystore.get_key('recall_keyring', 'password'), "subject": ""})
+            _goals = requests.get(f'{HTTP_ENDPOINT}/get-goals/', json = {"email": plyer.keystore.get_key('recall_keyring', 'username'), "pw": plyer.keystore.get_key('recall_keyring', 'password')})
+            _goals = _goals.json()['comp'][date.today().weekday()].split('::')
             print("goals", _goals)
             self.loading_anim.dismiss()
-            if goal_only:
-                self.data = [
-                    {"title": f"{name}",
-                    "icon": u"📕",
-                    "theme": f"Chủ đề: {subject}",
-                    "last_accessed": str(None),
-                    "on_press": lambda x = name: app.MDApp.get_running_app().go_to_text_browser(x)
-                    
-                    } for name, subject in _r.json()["texts"] if (subject in _goals)
-                ]
-            else:
-                self.data = [
-                    {"title": f"{name}",
-                    "icon": u"📕",
-                    "theme": f"Chủ đề: {subject}",
-                    "last_accessed": str(None),
-                    "on_press": lambda x = name: app.MDApp.get_running_app().go_to_text_browser(x)
-                    
-                    } for name, subject in _r.json()["texts"]
-                ]
+
+            self.data = [
+                {"title": f"{name}",
+                "icon": u"📕",
+                "theme": f"{subject}",
+                "last_accessed": str(None),
+                "on_press": lambda x = name: app.MDApp.get_running_app().go_to_text_browser(x)
+                
+                } for name, subject in _r.json()["texts"] if (subject in _goals)
+            ]
+
             self.refresh_from_data(self.data)
         except Exception as e:
             # display alert when no Internet connection is available
@@ -432,53 +379,9 @@ class NewFile(screen.MDScreen):
                 "on_release": lambda x=l.split(' - '): self.change_lang(x),
             } for l in ['Tiếng Việt - vie', 'English - eng']
         ]
-        self.lang_menu = menu.MDDropdownMenu(
-            items=self.langs,
-            width_mult=4,
-            caller = self.ids.lang_chooser
-        )
-        self.subject_menu = menu.MDDropdownMenu(
-            items = self.available_subjects,
-            width_mult = 4,
-            caller = self.ids.subject_chooser
-        )
-        self.add_subject_dlg = dialog.MDDialog(
-            title=" ",
-            type="custom",
-            content_cls = AddSubjectDialog(),
-            buttons = [
-                button.MDFillRoundFlatButton(text = 'Ok', md_bg_color = (0.321, 0.298, 0.431, 1.000), on_release = self._add_subject)
-            ]
-        )
 
     def update_filemanager(self, *args):
         pass
-    
-    def get_available_subjects(self):
-        try:
-            _c = app.MDApp.get_running_app().get_credential()
-            _r = requests.get(f'{HTTP_ENDPOINT}/user-subjects/', json={'email': _c.username, 'pw': _c.password})
-            
-            self.available_subjects = [
-                {
-                    "text": f"{subject}",
-                    "viewclass": "OneLineListItem",
-                    "on_release": lambda x=subject: self.change_subject(x),
-                }
-                for subject in _r.json()['subjects']
-            ]
-            self.subject_menu.items = self.available_subjects
-            self.subject_menu.items.append(
-                {
-                    "text": "Thêm chủ đề...",
-                    "viewclass": "OneLineListItem",
-                    "on_release": self.add_subject_dlg.open,
-                }
-            )
-        except Exception as e:
-            # display alert when no Internet connection is available
-            _snackbar = snackbar.Snackbar(text=f'LỖI: {str(e)}', bg_color = (233/255, 30/255, 99/255, 1))
-            _snackbar.open()
         
     def capture(self):
         if not self.camera.is_open:
@@ -492,8 +395,7 @@ class NewFile(screen.MDScreen):
         self.ids.browse_file_btn.disabled = disabled
         self.ids.capture_btn.disabled = disabled
         self.ids.name.disabled = disabled
-        self.ids.lang_chooser.disabled = disabled
-        self.ids.subject_chooser.disabled = disabled
+
         self.ids.textfield.disabled = disabled
 
     def process_image(self, path):
@@ -517,6 +419,7 @@ class NewFile(screen.MDScreen):
             self.remove_widget(self.camera)
         except:
             pass
+
         if utils.platform == 'android':
             self.file_dlg.show('/storage/emulated/0')
         else:
@@ -551,6 +454,9 @@ class NewFile(screen.MDScreen):
         self._loading_anim.dismiss()
 
     def process_file(self, files: str):
+        if (len(files) == 0):
+            self.file_dlg_open = False
+            return
         if platform.system() == 'Windows':
             files = files[0]
         self._loading_anim.title = str(files)
@@ -558,31 +464,15 @@ class NewFile(screen.MDScreen):
         clock.Clock.schedule_once(lambda *_: self.actual_process_file(files))
         self._loading_anim.dismiss()
         
-    def change_lang(self, l):
-        self._chosen_lang = l[1]
-        self.ids.lang_chooser.text = l[0]
-        self.lang_menu.dismiss()
-    
-    def change_subject(self, s):
-        self._chosen_subject = s
-        self.ids.subject_chooser.text = s
-        self.subject_menu.dismiss()
-
     def _t(self, *args):
         print(args)
-
-    def _add_subject(self, *args):
-        self.add_subject_dlg.dismiss()
-        self.change_subject(self.add_subject_dlg.content_cls._t.text)
 
     def actual_upload_file(self):
         _name = self.ids.name.text
         _content = self.ids.textfield.text
-        _subject = self._chosen_subject
         _status = snackbar.Snackbar()
-        _keywords = app.MDApp.get_running_app().fetch_keywords(_content, 8)
         self._loading_anim.open()
-        if not _subject or not _name or not _content:
+        if not _name or not _content:
             _status.bg_color = (233/255, 30/255, 99/255, 1)
             _status.text = "Vui lòng điền tên / chủ đề / nội dung"
         else:
@@ -591,10 +481,7 @@ class NewFile(screen.MDScreen):
                                 json={"email": plyer.keystore.get_key('recall_keyring', 'username'),
                                         "pw": plyer.keystore.get_key('recall_keyring', 'password'),
                                         "name": _name,
-                                        "subject": _subject,
-                                        "content": _content,
-                                        "lang": self._chosen_lang,
-                                        "keywords": _keywords})
+                                        "content": _content})
                 if _r.status_code == 200:
                     _status.bg_color = (0.55, 0.76, 0.29, 1)
                 else:
@@ -650,10 +537,48 @@ class DocsCard(card.MDCard, RectangularRippleBehavior):
     icon = properties.StringProperty()
     on_press = properties.Property(None)
     
+class SubjectCard(card.MDCard):
+    subject_name = properties.StringProperty()
+    card_color = properties.ColorProperty()
+    card_icon = properties.StringProperty()
+    subject_fullname = properties.StringProperty()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.dialog_opened = False
+      
+    def load_text_list_by_subject(self, subject: str, *args):
+        
+        if (not self.dialog_opened):
+            self.dialog_opened = True
+            _r = requests.get(f"{HTTP_ENDPOINT}/get-texts/", json = {"email": plyer.keystore.get_key('recall_keyring', 'username'), "pw": plyer.keystore.get_key('recall_keyring', 'password'), "subject": subject})
+
+            self.dlg = dialog.MDDialog(
+                type = "simple",
+                title = "Nội dung tự luyện" if len(_r.json()["texts"]) != 0 else "Chưa có nội dung!",
+                items = [
+                    OneLineAvatarListItem(
+                        ImageLeftWidget(source="UI/Images/icon_book_bookmark.png"),
+                        text = x[0],
+                        on_press = (lambda _, y = x[0]: self.handle_dialog_selection(y))
+                    ) for x in _r.json()["texts"]],
+
+                on_dismiss = self.dismiss_dlg
+            )
+
+            self.dlg.open()
+        
+    def dismiss_dlg(self, *args):
+        # self.dlg.dismiss()
+        self.dialog_opened = False
+
+    def handle_dialog_selection(self, y):
+        self.dlg.dismiss()
+        app.MDApp.get_running_app().go_to_text_browser(y)
 
 class TextBrowser(screen.MDScreen):
     text_name = properties.StringProperty()
-    _content = properties.StringProperty()
+    # _content = properties.StringProperty()
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._loading_anim = LoadingScreen()
@@ -666,19 +591,22 @@ class TextBrowser(screen.MDScreen):
     
     def get_text(self):
         try:
+            # print("selected: ", self.text_name)
             self._r = requests.get(f"{HTTP_ENDPOINT}/get-text-content/", json=
                             {
                                 "email": plyer.keystore.get_key('recall_keyring', 'username'),
                                 "pw": plyer.keystore.get_key('recall_keyring', 'password'),
-                                "name": self.text_name
+                                "name": self.text_name,
+                                "lang":""
                             })
             self._content = str(self._r.json()["content"])
 
             self.qs_num = 15
 
-            self.ids.subject.text = str(self._r.json()["subject"]).upper()
-            self.ids.text_name.text = self.text_name.upper()
-            self.ids.content_box.text = str(self._r.json()["content"])
+            self.ids.subject.text = self._r.json()["subject"].upper()
+            self.ids.subject_icon.text = app.MDApp.get_running_app().LABELS_BY_SUBJECT[self._r.json()["subject"]][1]
+            self.ids.text_name.text = self.text_name
+            self.ids.content_box.text = f'{self._r.json()["content"].strip().splitlines()[0]}...[còn nữa]'
             self.ids.content_box.cursor = (0, 0)
             self.ids.keywordsview.reload_keywords(str(self._r.json()["keywords"]))
             self.ids.qs_num_disp.text = f'Số câu hỏi: {self.qs_num}'
@@ -692,10 +620,10 @@ class TextBrowser(screen.MDScreen):
     def actual_prepare_questionaire(self):
         try:
             self._data = requests.get(
-                url=f"{HTTP_ENDPOINT}/generate-questionaire/",
+                url=f"{HTTP_ENDPOINT}/generate-questionaire-v2/",
                 json={
-                    "summary": app.MDApp.get_running_app().fetch_summarization(str(self._r.json()["content"]), self.qs_num),
-                    "definitions_raw": str(self._r.json()["keywords"])
+                    # "summary": app.MDApp.get_running_app().fetch_summarization(str(self._r.json()["content"]), self.qs_num),
+                    # "definitions_raw": str(self._r.json()["keywords"])
                 }
             )
             print(self._data.request.body)
@@ -713,7 +641,7 @@ class TextBrowser(screen.MDScreen):
 
     def change_qs_num(self, diff: int):
         self.qs_num = max(diff + self.qs_num, 1)
-        self.ids.qs_num_disp.text = f'Số câu hỏi: {self.qs_num}'
+        self.ids.qs_num_disp.text = f'{self.qs_num} câu hỏi'
 
     def on_pre_leave(self, *args):
         self._loading_anim.open()
@@ -781,13 +709,13 @@ class GoalSetter(screen.MDScreen):
             for index, day in enumerate(self.goals.keys()):
                 self.goals[day] = (_r.json()['sum'][index], _r.json()['comp'][index])
             print('response: ',self.goals)
-            self.get_goals('T2')
+            self.get_goals(tuple(self.goals.keys())[date.weekday(date.today())])
         except Exception as e:
             # display alert when no Internet connection is available
             _snackbar = snackbar.Snackbar(text=f'LỖI: {str(e)}', bg_color = (233/255, 30/255, 99/255, 1))
             _snackbar.open()
         finally:
-            self.ids.dowview.update_dow_toggle('T2')
+            self.ids.dowview.update_dow_toggle(tuple(self.goals.keys())[date.weekday(date.today())])
 
     def save_goals(self):
         try:
@@ -805,6 +733,7 @@ class GoalSetter(screen.MDScreen):
             _snackbar.open()
         finally:
             print(self.goals)
+            app.MDApp.get_running_app().back_to_homescreen(27)
 
     def get_goals(self, s: str):
         if s != self.prev_dow:
@@ -826,6 +755,7 @@ class GoalSetter(screen.MDScreen):
 
 class DaysOfWeekBtn(MDRoundFlatButton):
     toggle = properties.BooleanProperty(False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -960,8 +890,8 @@ class KeywordsView(MDRecycleView):
 
     def reload_keywords(self, kw: str):
         self.data = [
-            {"text": x.split(':')[0], "font_size": '16sp'}
-            for x in kw.split('\n')
+            {"text": x, "font_size": '16sp'}
+            for x in kw.split(':: ')
         ]
         self.viewclass.font_size = '16sp'
         self.refresh_from_data(self.data)
@@ -1204,7 +1134,7 @@ class Client(app.MDApp):
         self.title = "Test"
         super().__init__(**kwargs)
         self.s = screenmanager.ScreenManager()
-        self.ANDROID_ARGS = ANDROID_ARGS
+        self.EXEC_ARGS = EXEC_ARGS
         #self.screens = [WelcomeScreen(name="WelcomeScreen"), SignupForm(name="SignupForm")]
         self.loading = LoadingScreen()
         self.practise_data = {
@@ -1214,6 +1144,23 @@ class Client(app.MDApp):
             "swap_pending": "",
             "correct": 0
         }
+
+        self.LABELS_BY_SUBJECT = {
+            "Ngữ văn": ["Ngữ văn", "✍️"],
+            "Ngoại ngữ": ["Ngoại ngữ", "🌐"],
+            "Giáo dục Quốc phòng an ninh": ["Giáo dục QPAN", "🎖️"],
+            "Nội dung Giáo dục Địa phương": ["GD Địa phương", "🏫"],
+            "Hoạt động trải nghiệm, hướng nghiệp": ["Hoạt động TNHN", "🧭"],
+            "Lịch sử": ["Lịch sử", "🕰️"],
+            "Địa lý": ["Địa lý", "🗺️"],
+            "Kinh tế và Pháp luật": ["Kinh tế & Pháp luật", "⚖️"],
+            "Vật lý": ["Vật lý", "🌡️"],
+            "Hoá học": ["Hóa học", "🧪"],
+            "Sinh học": ["Sinh học", "🌱"],
+            "Công nghệ": ["Công nghệ", "🔌"],
+            "Tin học": ["Tin học", "💻"],
+            "Khác": ["Khác", "➕"]
+            }
     
     def build(self):
 
@@ -1254,12 +1201,15 @@ class Client(app.MDApp):
             os_remove("temp.png")
     
     def get_credential(self):
-        _usr = plyer.keystore.get_key('recall_keyring', 'username')
-        _pw = plyer.keystore.get_key('recall_keyring', 'password')
-        if _usr:
-            return KEYRING_PLACEHOLDER(_usr, _pw)
-        else:
-            return KEYRING_PLACEHOLDER("", "")
+        try:
+            _usr = plyer.keystore.get_key('recall_keyring', 'username')
+            _pw = plyer.keystore.get_key('recall_keyring', 'password')
+            if _usr:
+            	return KEYRING_PLACEHOLDER(_usr, _pw)
+            else:
+            	return KEYRING_PLACEHOLDER("", "")
+        except:
+            return KEYRING_PLACEHOLDER("","")
 
     def get_raw_username(self, username: str):
         return username.split('@')[0]
@@ -1268,53 +1218,10 @@ class Client(app.MDApp):
         return KvImage(source = path).texture
 
     def go_to_text_browser(self, name):
+        print(name)
         self.s.get_screen("TextBrowser").text_name = name
         self.s.transition = CardTransition(duration=0.23)
         self.s.current = "TextBrowser"
-
-    def fetch_keywords(self, _content: str, _keywords_num: str):
-        _kw_extraction_prompt = f"""
-            Fetch {_keywords_num} shortest keywords from the document. Please use the template below.
-        """
-        _FORMAT = """
-            ---BEGIN FORMAT TEMPLATE---
-            {KEYWORD_1}: {DEFINITION_IN_VIETNAMESE}
-            {KEYWORD_2}: {DEFINITION_IN_VIETNAMESE}
-            ---END FORMAT TEMPLATE
-        """
-        
-        try:
-            _r = requests.post(
-                url='https://api.openai.com/v1/chat/completions',
-                headers= {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer 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'
-                },
-                json={
-                    'model': 'gpt-3.5-turbo',
-                    'messages': [
-                        {
-                            'role': 'system',
-                            'content': _kw_extraction_prompt + _FORMAT
-                        },
-                        {
-                            'role': 'user',
-                            'content': _content
-                        }
-                    ],
-                    'temperature': 0.7, 
-                    'top_p': 1.0,
-                    'frequency_penalty': 0.0,
-                    'presence_penalty': 1.0,
-                    'max_tokens': 256
-                }
-            )
-            _raw: str = _r.json()['choices'][0]['message']['content']
-            return _raw
-        except Exception as e:
-            # display alert when no Internet connection is available
-            _snackbar = snackbar.Snackbar(text=f'LỖI: {str(e)}', bg_color = (233/255, 30/255, 99/255, 1))
-            _snackbar.open()
 
     def start_practise(self, data, title):
         self.practise_data["title"] = title
@@ -1371,45 +1278,6 @@ class Client(app.MDApp):
     def close_error_dlg(self):
         self._err.dismiss()
 
-    def fetch_summarization(self, fullform: str, length: int):
-        try:
-            _r = requests.post(
-                url='https://api.openai.com/v1/chat/completions',
-                headers= {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer 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'
-                },
-                json=
-                {
-                    "model": "gpt-3.5-turbo",
-                    "temperature": 0.35, 
-                    "top_p": 1.0,
-                    "frequency_penalty": 0.0,
-                    "presence_penalty": 0.0,
-                    "max_tokens": 2048,
-                    "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a language model that can extract key sentences."
-                    },
-                    {
-                        "role": "user",
-                        "content": fullform
-                    },
-                    {
-                        "role": "assistant",
-                        "content": f"Sure, here are {length} key sentences in Vietnamese"
-                    }
-                ]}
-            )
-            try:
-                _raw_responses: list[str] = _r.json()['choices'][0]['message']['content'].split('.')
-                return _raw_responses
-            except:
-                print(_r.json())
-        except Exception as e:
-            # display alert when no Internet connection is available
-            _snackbar = snackbar.Snackbar(text=f'LỖI: {str(e)}', bg_color = (233/255, 30/255, 99/255, 1))
-            _snackbar.open()
+
 
 Client().run()
