@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import uvicorn
 import hashlib
 import unidecode
+from re import escape as re_escape
 from mimetypes import guess_type as guess_mimetype
 from cv2 import imread, threshold, cvtColor, COLOR_BGR2GRAY, THRESH_OTSU, THRESH_BINARY
 from PIL import Image as PILImage
@@ -13,23 +14,26 @@ import pypandoc
 import pytesseract
 import sqlalchemy
 import sqlalchemy.orm
-import underthesea
+# import underthesea
 #import psycopg2
 from sqlalchemy import text
 from shutil import copyfileobj
 from stopwords import stopwords
 from datetime import date
 import requests as rq
-from fitb_demo import fetch_content_phrase, generate_wh_qs_from_definitions, generate_true_false_qs, generate_fitb
 from random import randint
 from enum import Enum
-server = FastAPI()
 
+from gpt_automation import main as gpt_auto
+
+server = FastAPI()
 # Set up database connection
 
 requests = rq.Session()
 
-SQLALCHEMY_DATABASE_URL = "postgresql://mvlzxjih:hQSOo8VpoyzsfQAEm67BNdQOievQYTKr@satao.db.elephantsql.com/mvlzxjih"
+SQLALCHEMY_DATABASE_URL = "sqlite:///server-data.db"
+SQL_LIST_DELIM = "::"
+
 engine = sqlalchemy.create_engine(SQLALCHEMY_DATABASE_URL)
 Session = sqlalchemy.orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -45,12 +49,15 @@ class LoginForm(BaseModel):
     email: str
     pw: str
 
+class QueryBySubject(LoginForm):
+    subject: str
+
 class TextUploadForm(LoginForm):
     name: str
-    subject: str
+
     content: str
-    lang: str
-    keywords: str
+
+    # keywords: str
 
 class TextQuery(LoginForm):
     name: str
@@ -64,6 +71,7 @@ class TextContent(BaseModel):
     summary: list[str]
     definitions_raw: str
     #length: int
+
 
 class Activity(LoginForm):
     name: str
@@ -86,6 +94,12 @@ def hash_pw(pw: str) -> Tuple[bytes, bytes]:
 
 # set up pytesseract by providing path to tesseract executable
 pytesseract.pytesseract.tesseract_cmd = './tesseract'
+
+def get_today_date():
+    return date.today().strftime('%Y-%m-%d')
+
+def get_today_date_as_int():
+    return date.today().weekday()
 
 @server.post("/signup/")
 async def signup(form: LoginForm):
@@ -186,18 +200,26 @@ async def upload_text(t: TextUploadForm):
         if _c:
             _existing_names = conn.execute(text(f"SELECT name FROM {t.email.split('@')[0]}_texts WHERE name='{t.name}'")).fetchall()
             if len(_existing_names) == 0:
-                conn.execute(text(f"INSERT INTO {t.email.split('@')[0]}_texts (name, subject, content, lang, keywords) VALUES ('{t.name}', '{t.subject}', '{t.content}', '{t.lang}', '{t.keywords}')"))
+                
+                _PARATHENSES = "\""
+                _APOSTROPHE = "\'"
+
+                keywords, unparsed_keywords = gpt_auto.get_keywords(t.content)
+                subject = gpt_auto.classify_based_on_keywords(unparsed_keywords)
+                conn.execute(text(f"INSERT INTO {t.email.split('@')[0]}_texts (name, subject, content, keywords) VALUES ('{t.name}', '{subject}', \"{t.content.replace(_PARATHENSES, _APOSTROPHE)}\", '{SQL_LIST_DELIM.join(keywords)}')"))
                 conn.commit()
                 raise HTTPException(200, "Thêm tài liệu thành công!")
             else:
                 raise HTTPException(400, "Mục mang tên này đã tồn tại")
 
 @server.get("/get-texts/")
-async def get_texts(form: LoginForm):
+async def get_texts(form: QueryBySubject):
     _c = check_credentials(form.email, form.pw)
     if _c:
         with Session() as conn:
-            _texts = conn.execute(text(f"SELECT name, subject FROM {form.email.split('@')[0]}_texts")).fetchall()
+            _filter = f"WHERE subject='{form.subject}'" if form.subject != "" else ""
+            print(_filter)
+            _texts = conn.execute(text(f"SELECT name, subject FROM {form.email.split('@')[0]}_texts {_filter}")).fetchall()
             _l = []
             for name, subject in _texts:
                 _l.append((name, subject))
@@ -210,64 +232,9 @@ async def get_content(q: TextQuery):
         with Session() as conn:
 
             _texts = conn.execute(text(f"SELECT subject, content, keywords FROM {q.email.split('@')[0]}_texts WHERE name='{q.name}'")).fetchall()
-            #print(_texts[0][1])
+            print(_texts[0][1])
             return {"subject": _texts[0][0], "content": _texts[0][1], "keywords": _texts[0][2]}
 
-@server.get("/get-user-status/")
-async def get_user_status(credentials: LoginForm):
-    _c = check_credentials(credentials.email, credentials.pw)
-    if _c:
-        with Session() as conn:
-            if len(conn.execute(text(f"SELECT * FROM {credentials.email.split('@')[0]}_texts")).fetchall()) == 0:
-                return {'status': ['no_files', None]}
-            else:
-                _today_count = len(conn.execute(text(f"SELECT * FROM {credentials.email.split('@')[0]}_activities WHERE date = '{date.today().strftime('%Y-%m-%d')}'")).all())
-                _needs_practising = conn.execute(text(f"SELECT text_name, score FROM {credentials.email.split('@')[0]}_activities WHERE score < 65")).all()
-                
-                # run if there are practises scoring under 65%
-                if len(_needs_practising) > 0:
-                    return {'status': ['needs_practising', len(_needs_practising)],
-                            'extras': [(_name, _acc) for _name, _acc in _needs_practising]}
-
-                else:
-                    # retrieve goals of the day from user
-                    
-                    # check if user has any goals
-                    _sum = conn.execute(text(f"SELECT FROM {credentials.email.split('@')[0]}_goals WHERE name='sum'")).fetchall()
-                    _comp = conn.execute(text(f"SELECT FROM {credentials.email.split('@')[0]}_goals WHERE name='comp'")).fetchall()
-                    _suggested_docs = conn.execute(text(f"SELECT * FROM {credentials.email.split('@')[0]}_texts WHERE subject IN ()")).fetchall()
-                    
-                    if len(_suggested_docs) > 0:
-                        pass
-
-                    else:
-                        # run if user have practised during the day
-                        if _today_count > 0:
-                            return {'status': ['practised', _today_count]}
-                        # remind user to practise if they haven't yet
-                        else:
-                            _total_count = len(conn.execute(text(f"SELECT * FROM {credentials.email.split('@')[0]}_texts")).fetchall())
-                            return {'status': ['not_practised', _total_count]}
-
-@server.get("/generate-questionaire/")
-async def generate_qs(_t: TextContent):
-
-    _questions: list[tuple(str, any)] = []
-
-    
-    # Generate questions from summary
-    for sentence in _t.summary:
-        print(sentence)
-
-        content_phrases = fetch_content_phrase(sentence)
-        if len(content_phrases["content_words"]) != 0:
-            if not (content_phrases["content_words"][0][1].isnumeric() and len(content_phrases["content_words"]) <= 2):
-                _temp_question = generate_fitb(content_phrases, 3)
-                if _temp_question[1]:
-                    _questions.append(_temp_question)
-        
-
-    return {"questions": tuple(_questions)}
 
 @server.post("/record-activity/")
 async def record_activity(_activity: Activity):
@@ -278,7 +245,7 @@ async def record_activity(_activity: Activity):
                 if _activity.accuracy < 65:
                     sql.execute(text(f"DELETE FROM {_activity.email.split('@')[0]}_activities WHERE text_name = '{_activity.name}'"))
                 sql.commit()
-                sql.execute(text(f"INSERT INTO {_activity.email.split('@')[0]}_activities (text_name, score, date) VALUES ('{_activity.name}', {_activity.accuracy}, '{date.today().strftime('%Y-%m-%d')}')"))
+                sql.execute(text(f"INSERT INTO {_activity.email.split('@')[0]}_activities (text_name, score, date) VALUES ('{_activity.name}', {_activity.accuracy}, '{get_today_date()}')"))
                 sql.commit()
             return "success"
     except Exception as e:
@@ -303,8 +270,7 @@ async def save_goals(_goals: Goal):
         sql.commit()
     print(_sum_sql_string)
 
-@server.get('/get-goals/')
-async def retrieve_goals(user: LoginForm):
+def _retrieve_goals(user: LoginForm):
     _c = check_credentials(user.email, user.pw)
     if _c:
         with Session() as sql:
@@ -312,5 +278,58 @@ async def retrieve_goals(user: LoginForm):
             _comp = sql.execute(text(f"SELECT mon, tue, wed, thu, fri, sat, sun FROM {user.email.split('@')[0]}_goals WHERE name='comp'")).fetchall()
             
             return {'sum': [str(x) for x in _sum[0]], 'comp': [str(x) for x in _comp[0]]}
+
+@server.get('/get-goals/')
+async def retrieve_goals_api(user: LoginForm):
+    return _retrieve_goals(user)
+
+#New API endpoints
+
+@server.get("/generate-questionaire-v2")
+async def generate_qs(t: TextQuery):
+    if (check_credentials(t.email, t.pw)):
+
+        _questions: list[tuple(str, any)] = []
+        with Session() as sql:
+            _content = sql.execute(text(f"SELECT content FROM {t.email.split('@')[0]}_texts WHERE name='{t.name}'"))
+        return (_content)
+
+def calculate_current_progress(c: LoginForm, goal_subject: str) -> int:
+    with Session() as conn:
+
+        # fetch subject of knowledge units done during the day
+        r = conn.execute(text(f"SELECT {c.email.split('@')[0]}_texts.subject FROM {c.email.split('@')[0]}_texts WHERE {c.email.split('@')[0]}_texts.name IN (SELECT {c.email.split('@')[0]}_activities.text_name FROM {c.email.split('@')[0]}_activities WHERE {c.email.split('@')[0]}_activities.date='{get_today_date()}')")).fetchall()
+        if len(r) == 0:
+            return 0
+        return len([x for x in r[0] if x in goal_subject])
+
+@server.get("/user-status-v2/")
+async def get_user_status(c: LoginForm):
+    if (check_credentials(c.email, c.pw)):
+
+        status: dict[str, str] = {}
+
+        goal_data = _retrieve_goals(c)
+        goal_threshold = int(goal_data["sum"][get_today_date_as_int()])
+        goal_subject = goal_data["comp"][get_today_date_as_int()]
+
+        with Session() as conn:
+            
+            # status["current_progress"] = len(conn.execute(text(f"SELECT text_name FROM {c.email.split('@')[0]}_activities WHERE date='{get_today_date()}' AND text_name IN (SELECT name FROM {c.email.split('@')[0]}_texts WHERE '{goal_subject}' LIKE subject)")).fetchall())
+
+            status["current_progress"] = calculate_current_progress(c, goal_subject)
+            status["threshold"] = goal_threshold
+            status["goal_subjects"] = goal_subject.removeprefix('::').split('::')
+
+            status["text_stored"] = len(conn.execute(text(f"SELECT name FROM {c.email.split('@')[0]}_texts")).fetchall())
+
+        return status
+
 if __name__ == '__main__':
-    uvicorn.run('server:server', reload=False)
+    with Session() as conn:
+        try:
+            conn.execute(text("CREATE TABLE credentials (id TEXT, pw TEXT, salt TEXT)"))
+        except:
+            print("Credential table existed. There's no need to create one.")
+
+    uvicorn.run('server:server', reload=False, timeout_keep_alive=20, port=8000)
